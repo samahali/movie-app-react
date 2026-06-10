@@ -39,30 +39,32 @@ export function TVPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsLoading(true)
-    setError(null)
+    let cancelled = false
 
-    let request: Promise<PaginatedResponse<TVShow>>
-
-    if (genreId) {
-      request = fetchTVByGenre(Number(genreId), page)
-    } else {
-      const fetchMap: Record<string, (p: number) => Promise<PaginatedResponse<TVShow>>> = {
-        airing_today: fetchAiringTodayTV,
-        on_the_air: fetchOnAirTV,
-        popular: fetchPopularTV,
-        top_rated: fetchTopRatedTV,
-      }
-      request = (fetchMap[category] ?? fetchPopularTV)(page)
+    const fetchMap: Record<string, (p: number) => Promise<PaginatedResponse<TVShow>>> = {
+      airing_today: fetchAiringTodayTV,
+      on_the_air: fetchOnAirTV,
+      popular: fetchPopularTV,
+      top_rated: fetchTopRatedTV,
     }
+    const request = genreId
+      ? fetchTVByGenre(Number(genreId), page)
+      : (fetchMap[category] ?? fetchPopularTV)(page)
 
     request
       .then((data) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(null)
         setShows(data.results)
         setTotalPages(data.total_pages)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      })
+    return () => { cancelled = true }
   }, [category, genreId, page])
 
   function handlePageChange(newPage: number) {

@@ -30,15 +30,21 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsLoading(true)
-    setError(null)
+    let cancelled = false
     FETCH_MAP[activeSection](page)
       .then((data) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(null)
         setMovies(data.results)
         setTotalPages(data.total_pages)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      })
+    return () => { cancelled = true }
   }, [activeSection, page])
 
   function handleSectionChange(section: Section) {

@@ -38,35 +38,37 @@ export function MoviesPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsLoading(true)
-    setError(null)
+    let cancelled = false
 
-    let request: Promise<PaginatedResponse<Movie>>
-
-    if (searchQuery) {
-      request = fetchSearchMulti(searchQuery, page).then((data) => ({
-        ...data,
-        results: data.results.filter((r) => r.media_type === 'movie') as unknown as Movie[],
-      }))
-    } else if (genreId) {
-      request = fetchMoviesByGenre(Number(genreId), page)
-    } else {
-      const fetchMap: Record<string, (p: number) => Promise<PaginatedResponse<Movie>>> = {
-        now_playing: fetchNowPlayingMovies,
-        popular: fetchPopularMovies,
-        top_rated: fetchTopRatedMovies,
-        upcoming: fetchUpcomingMovies,
-      }
-      request = (fetchMap[category] ?? fetchPopularMovies)(page)
+    const fetchMap: Record<string, (p: number) => Promise<PaginatedResponse<Movie>>> = {
+      now_playing: fetchNowPlayingMovies,
+      popular: fetchPopularMovies,
+      top_rated: fetchTopRatedMovies,
+      upcoming: fetchUpcomingMovies,
     }
+    const request: Promise<PaginatedResponse<Movie>> = searchQuery
+      ? fetchSearchMulti(searchQuery, page).then((data) => ({
+          ...data,
+          results: data.results.filter((r) => r.media_type === 'movie') as unknown as Movie[],
+        }))
+      : genreId
+      ? fetchMoviesByGenre(Number(genreId), page)
+      : (fetchMap[category] ?? fetchPopularMovies)(page)
 
     request
       .then((data) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(null)
         setMovies(data.results)
         setTotalPages(data.total_pages)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      })
+    return () => { cancelled = true }
   }, [category, genreId, searchQuery, page])
 
   function handlePageChange(newPage: number) {

@@ -31,8 +31,7 @@ export function MovieDetailsPage() {
 
   useEffect(() => {
     if (!movieId) return
-    setIsLoading(true)
-    setError(null)
+    let cancelled = false
     window.scrollTo(0, 0)
 
     Promise.all([
@@ -42,13 +41,20 @@ export function MovieDetailsPage() {
       fetchSimilarMovies(movieId),
     ])
       .then(([detailsData, creditsData, videosData, similarData]) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(null)
         setDetails(detailsData)
         setCredits(creditsData)
         setVideos(videosData)
         setSimilar(similarData.results.slice(0, 6))
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      })
+    return () => { cancelled = true }
   }, [movieId])
 
   if (isLoading) return <DetailsSkeleton />

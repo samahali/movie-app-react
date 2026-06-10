@@ -24,21 +24,26 @@ export function ActorDetailsPage() {
 
   useEffect(() => {
     if (!personId) return
-    setIsLoading(true)
-    setError(null)
-
+    let cancelled = false
     Promise.all([
       fetchPersonDetails(personId),
       fetchPersonCredits(personId),
       fetchPersonExternalIds(personId),
     ])
       .then(([personData, creditsData, externalData]) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(null)
         setPerson(personData)
         setCredits(creditsData)
         setExternalIds(externalData)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      })
+    return () => { cancelled = true }
   }, [personId])
 
   if (isLoading) return <DetailsSkeleton />

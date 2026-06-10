@@ -15,15 +15,21 @@ export function ActorsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsLoading(true)
-    setError(null)
+    let cancelled = false
     fetchTrendingActors(page)
       .then((data) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(null)
         setActors(data.results)
         setTotalPages(data.total_pages)
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Something went wrong'))
-      .finally(() => setIsLoading(false))
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setIsLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong')
+      })
+    return () => { cancelled = true }
   }, [page])
 
   function handlePageChange(newPage: number) {

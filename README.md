@@ -1,73 +1,127 @@
-# React + TypeScript + Vite
+# CineVault
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern movie and TV show discovery app built with React 19, TypeScript, and the TMDB API. Browse trending movies, TV shows, and actors with a clean cinematic UI and full dark/light theme support.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Movies** — Now Playing, Popular, Top Rated, Upcoming, browse by genre
+- **TV Shows** — Airing Today, On Air, Popular, Top Rated, browse by genre
+- **Actors** — Trending people with full profile pages and filmographies
+- **Detail pages** — Full-bleed backdrop hero, cast, trailer modal, similar titles, seasons carousel
+- **Search** — Multi-search across movies, TV shows, and people
+- **Dark / Light theme** — Follows system preference, togglable, persisted to localStorage
+- **Content safety** — Adult content, explicit genres (Drama, Romance), and R-rated titles excluded at both API and client level
+- **URL-driven pagination** — All filters and pages live in the URL (bookmarkable, shareable)
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Technology |
+|---|---|
+| Framework | React 19 + TypeScript |
+| Build tool | Vite 8 |
+| Styling | Tailwind CSS v4.3 |
+| Components | shadcn/ui |
+| Routing | React Router DOM v7 |
+| Icons | Lucide React |
+| Font | Geist Variable |
+| Testing | Vitest + Testing Library + Playwright |
+| Linting | ESLint + Husky pre-commit |
+| Package manager | pnpm |
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 20+
+- pnpm (`npm i -g pnpm`)
+- A free [TMDB API key](https://www.themoviedb.org/settings/api)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Clone the repo
+git clone https://github.com/samahali/movie-app-react.git
+cd movie-app-react
+
+# Install dependencies (also sets up Husky hooks)
+pnpm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Create a `.env.local` file in the project root:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```env
+VITE_TMDB_API_KEY=your_bearer_token_here
+VITE_TMDB_BASE_URL=https://api.themoviedb.org/3
+VITE_TMDB_IMAGE_BASE=https://image.tmdb.org/t/p
 ```
+
+The API key is the **Bearer token** from your TMDB account (not the v3 key).
+
+### Development
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:5173](http://localhost:5173).
+
+## Available Scripts
+
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start dev server |
+| `pnpm build` | Type-check and build for production |
+| `pnpm preview` | Preview the production build |
+| `pnpm lint` | Run ESLint |
+| `pnpm test` | Run unit tests in watch mode |
+| `pnpm test:run` | Run unit tests once |
+| `pnpm exec playwright test` | Run E2E tests |
+
+## Project Structure
+
+```
+src/
+├── pages/
+│   ├── Home.tsx
+│   ├── Movies/
+│   │   ├── Movies.tsx
+│   │   └── MovieDetails.tsx
+│   ├── TV/
+│   │   ├── TV.tsx
+│   │   └── TVDetails.tsx
+│   ├── Actors/
+│   │   ├── Actors.tsx
+│   │   └── ActorDetails.tsx
+│   └── NotFound/
+│       └── NotFound.tsx
+├── components/
+│   ├── ui/              # shadcn/ui primitives (read-only)
+│   ├── Navbar/
+│   ├── Footer/
+│   ├── Layout/
+│   ├── MovieCard/
+│   └── Pagination/
+├── context/
+│   └── ThemeContext.tsx  # dark/light theme
+├── util/
+│   └── API.ts           # all TMDB fetch functions
+├── types/
+│   └── tmdb.ts          # TMDB response types
+└── router.tsx           # lazy-loaded routes
+```
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+The app will be available at [http://localhost:4173](http://localhost:4173).
+
+## Data Source
+
+Movie and TV data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org). This product uses the TMDB API but is not endorsed or certified by TMDB.
+
+![TMDB Logo](https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg)

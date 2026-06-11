@@ -1,6 +1,6 @@
 # /new-page
 
-Scaffold a new page for the movie-app.
+Scaffold a new production-quality page for CineVault.
 
 ## Usage
 
@@ -10,33 +10,42 @@ Scaffold a new page for the movie-app.
 
 Examples:
 ```
-/new-page Movies displays a filterable grid of movies based on category and genre
-/new-page ActorDetails shows full profile and filmography for a single actor
+/new-page Movies displays a filterable infinite-scroll grid of movies by category and genre
+/new-page ActorDetails shows full profile, biography, and filmography for a single actor
 ```
 
 ## What This Does
 
-1. Creates `src/pages/<PageName>/<PageName>.tsx` (or `src/pages/<PageName>.tsx` for simple pages).
-2. Adds any required fetch functions to `src/util/API.ts` with JSDoc (checks for duplicates first).
-3. Creates a custom hook in `src/hooks/use<PageName>.ts` if data-fetching logic is non-trivial.
-4. Registers the route in the router file (`src/App.tsx` or `src/router.tsx`).
-5. Lists any sub-components that should be created separately.
+1. Reads `src/pages/`, `src/components/`, `src/util/API.ts`, `src/hooks/`, `src/router.tsx` first.
+2. Adds fetch function(s) to `src/util/API.ts` with JSDoc (checks for duplicates).
+3. Creates a TanStack Query hook in `src/hooks/`:
+   - List pages → `useInfiniteQuery`
+   - Detail pages → `useQueries`
+4. Creates the page component at `src/pages/<PageName>/<PageName>.tsx`.
+5. Creates sub-components under `src/components/` if reusable.
+6. Registers the route in `src/router.tsx` with `React.lazy`.
+7. Adds `<Helmet>` SEO tags (title, description, Open Graph for detail pages).
 
 ## Output Checklist
 
-Before finishing, confirm:
-- [ ] Page file created at the correct path
-- [ ] Route registered (show the route path used)
-- [ ] Fetch functions added or existing ones reused
-- [ ] Loading skeleton shown while data loads (use shadcn `Skeleton`)
-- [ ] Error state shown if the API call fails
-- [ ] Empty state shown if the API returns no results
-- [ ] TypeScript types defined for all API responses
+- [ ] Types in `src/types/tmdb.ts`
+- [ ] Fetch function(s) in `src/util/API.ts` with JSDoc
+- [ ] TanStack Query hook in `src/hooks/` with `staleTime` + `gcTime`
+- [ ] Page at correct path with `<Helmet>` SEO block
+- [ ] Route registered in `src/router.tsx` with `React.lazy`
+- [ ] Loading skeleton while data loads
+- [ ] Error state on failure
+- [ ] Empty state on 0 results
+- [ ] "Load More" button (infinite scroll) on list pages
+- [ ] LCP image: `loading="eager"` + `fetchpriority="high"`
+- [ ] All other images: `loading="lazy"`
+- [ ] Lint passes (`pnpm lint`)
 
 ## Rules
 
 - TypeScript only — `.tsx` extension.
 - Tailwind classes only — no inline styles.
-- No `any` types.
+- No `any`.
+- No `useState + useEffect` for async data — use TanStack Query.
+- No numbered pagination — use `useInfiniteQuery` + "Load More".
 - API keys from `import.meta.env.VITE_TMDB_API_KEY`.
-- JSDoc on the page component if it makes multiple API calls.

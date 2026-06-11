@@ -1,19 +1,8 @@
-import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
-import {
-  fetchAiringTodayTV,
-  fetchOnAirTV,
-  fetchPopularTV,
-  fetchTopRatedTV,
-  fetchTVByGenre,
-} from '@/util/API'
-import { Pagination } from '@/components/Pagination/Pagination'
-import { cn } from '@/lib/utils'
-import type { TVShow, PaginatedResponse } from '@/types/tmdb'
-
-const IMAGE_BASE = import.meta.env.VITE_TMDB_IMAGE_BASE as string
+import { Helmet } from 'react-helmet-async'
+import { useTVByCategory, useTVByGenre } from '@/hooks/useTV'
+import { TVCard } from '@/components/TVCard/TVCard'
+import { Button } from '@/components/ui/button'
 
 const CATEGORY_LABELS: Record<string, string> = {
   airing_today: 'Airing Today',
@@ -23,122 +12,60 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 /**
- * TVPage renders TV shows filtered by category or genre.
+ * TVPage renders TV shows filtered by category or genre using TanStack Query infinite scroll.
  * URL params: ?category=, ?genre=, ?genreName=
  */
 export function TVPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const category = searchParams.get('category') ?? 'popular'
   const genreId = searchParams.get('genre')
   const genreName = searchParams.get('genreName')
-  const page = Number(searchParams.get('page') ?? '1')
 
-  const [shows, setShows] = useState<TVShow[]>([])
-  const [totalPages, setTotalPages] = useState(1)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const categoryResult = useTVByCategory(category)
+  const genreResult = useTVByGenre(genreId ? Number(genreId) : 0)
 
-  useEffect(() => {
-    let cancelled = false
-
-    const fetchMap: Record<string, (p: number) => Promise<PaginatedResponse<TVShow>>> = {
-      airing_today: fetchAiringTodayTV,
-      on_the_air: fetchOnAirTV,
-      popular: fetchPopularTV,
-      top_rated: fetchTopRatedTV,
-    }
-    const request = genreId
-      ? fetchTVByGenre(Number(genreId), page)
-      : (fetchMap[category] ?? fetchPopularTV)(page)
-
-    request
-      .then((data) => {
-        if (cancelled) return
-        setIsLoading(false)
-        setError(null)
-        setShows(data.results)
-        setTotalPages(data.total_pages)
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return
-        setIsLoading(false)
-        setError(err instanceof Error ? err.message : 'Something went wrong')
-      })
-    return () => { cancelled = true }
-  }, [category, genreId, page])
-
-  function handlePageChange(newPage: number) {
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.set('page', String(newPage))
-      return next
-    })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  const active = genreId ? genreResult : categoryResult
+  const { data, isLoading, error, fetchNextPage, hasNextPage, isFetchingNextPage } = active
 
   const heading = genreName ?? CATEGORY_LABELS[category] ?? 'TV Shows'
+  const shows = data?.pages.flatMap((p) => p.results) ?? []
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold">{heading}</h1>
+    <>
+      <Helmet>
+        <title>{heading} — CineVault</title>
+        <meta name="description" content={`Browse ${heading.toLowerCase()} TV shows on CineVault.`} />
+      </Helmet>
 
-      {error ? (
-        <div className="flex min-h-64 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5">
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
-      ) : isLoading ? (
-        <TVGridSkeleton />
-      ) : shows.length === 0 ? (
-        <div className="flex min-h-64 items-center justify-center text-muted-foreground">No shows found.</div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {shows.map((show) => (
-              <TVCard key={show.id} show={show} />
-            ))}
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <h1 className="mb-6 text-3xl font-bold">{heading}</h1>
+
+        {error ? (
+          <div className="flex min-h-64 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/5">
+            <p className="text-sm text-destructive">{(error as Error).message}</p>
           </div>
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={handlePageChange} />
-        </>
-      )}
-    </div>
-  )
-}
-
-function TVCard({ show }: { show: TVShow }) {
-  const posterUrl = show.poster_path ? `${IMAGE_BASE}/w342${show.poster_path}` : null
-  const year = show.first_air_date?.slice(0, 4) ?? '—'
-
-  return (
-    <Link
-      to={`/tv/${show.id}`}
-      data-testid="tv-card"
-      className={cn(
-        'group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-      )}
-    >
-      <div className="aspect-2/3 overflow-hidden bg-muted">
-        {posterUrl ? (
-          <img
-            src={posterUrl}
-            alt={show.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
+        ) : isLoading ? (
+          <TVGridSkeleton />
+        ) : shows.length === 0 ? (
+          <div className="flex min-h-64 items-center justify-center text-muted-foreground">No shows found.</div>
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground px-2 text-center">
-            {show.name}
-          </div>
+          <>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {shows.map((show) => (
+                <TVCard key={show.id} show={show} />
+              ))}
+            </div>
+            {hasNextPage && (
+              <div className="mt-10 flex justify-center">
+                <Button onClick={() => fetchNextPage()} disabled={isFetchingNextPage} variant="outline" size="lg">
+                  {isFetchingNextPage ? 'Loading…' : 'Load More'}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
-      <div className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-xs font-medium text-yellow-400">
-        <Star className="size-3 fill-yellow-400" />
-        {show.vote_average.toFixed(1)}
-      </div>
-      <div className="p-3">
-        <p className="line-clamp-2 text-sm font-semibold leading-tight">{show.name}</p>
-        <p className="text-xs text-muted-foreground">{year}</p>
-      </div>
-    </Link>
+    </>
   )
 }
 

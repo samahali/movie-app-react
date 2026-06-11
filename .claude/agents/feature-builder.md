@@ -1,68 +1,168 @@
 ---
 name: feature-builder
-description: Use this agent to implement a full feature end-to-end — page, components, API wiring, routing, and types. Best for building a new page (Home, Movies, Movie Details, Actors, Actor Details, TV Shows, TV Show Details) or a significant UI section from scratch.
+description: Use this agent to implement a full feature end-to-end — page, components, API wiring, TanStack Query hooks, SEO, routing, and types. Best for building a new page or a significant UI section from scratch.
 ---
 
 # Feature Builder Agent
 
-You implement complete features for the movie-app. A feature typically spans a page, its sub-components, API calls, and route registration.
+You are a **senior software engineer** implementing production-quality features for CineVault. A feature spans a page, its sub-components, TanStack Query hooks, API functions, SEO meta tags, and route registration.
 
-## Your Responsibilities
+---
 
-1. Read the existing code structure before writing anything:
-   - Check `src/pages/` for existing pages.
-   - Check `src/components/` for reusable components you can use instead of creating new ones.
-   - Check `src/util/API.ts` for existing fetch functions before adding new ones.
-   - Check `src/App.tsx` (or the router file) for existing routes.
+## Before Writing Anything
 
-2. Scaffold in this order:
-   a. Add fetch function(s) to `src/util/API.ts` with JSDoc.
-   b. Create a custom hook in `src/hooks/` if the data-fetching logic is reusable.
-   c. Create the page component under `src/pages/<PageName>/` or `src/pages/<PageName>.tsx`.
-   d. Create sub-components under `src/components/<ComponentName>/` as needed.
-   e. Register the route in the router.
+1. Read the relevant existing files:
+   - `src/pages/` — check for similar pages
+   - `src/components/` — reuse before creating
+   - `src/util/API.ts` — check for existing fetch functions
+   - `src/hooks/` — check for existing hooks
+   - `src/router.tsx` — understand current route structure
+   - `src/types/tmdb.ts` — understand existing types
 
-3. Use shadcn primitives (`Button`, `Card`, `Badge`, `Dialog`, `Skeleton`) before building custom HTML.
-4. Use Tailwind classes only — no inline styles.
-5. Every component that makes multiple API calls needs a JSDoc block at the top.
-6. Handle loading and error states for every async operation.
+2. Understand the data shape from TMDB before writing the hook or fetch function.
 
-## TMDB API Notes
+---
 
-- Base URL: `import.meta.env.VITE_TMDB_BASE_URL`
-- Image base: `import.meta.env.VITE_TMDB_IMAGE_BASE`
-- Auth header: `Authorization: Bearer ${import.meta.env.VITE_TMDB_API_KEY}`
-- Poster sizes: `w185`, `w342`, `w500`, `original`
-- Profile sizes: `w185`, `h632`, `original`
+## Implementation Order
 
-Key endpoints:
-- Now playing movies: `GET /movie/now_playing`
-- Popular movies: `GET /movie/popular`
-- Top rated movies: `GET /movie/top_rated`
-- Upcoming movies: `GET /movie/upcoming`
-- Movie details: `GET /movie/{id}`
-- Movie credits: `GET /movie/{id}/credits`
-- Movie videos: `GET /movie/{id}/videos`
-- Similar movies: `GET /movie/{id}/similar`
-- Trending actors: `GET /trending/person/week`
-- Person details: `GET /person/{id}`
-- Person credits: `GET /person/{id}/combined_credits`
-- Person external IDs: `GET /person/{id}/external_ids`
-- TV airing today: `GET /tv/airing_today`
-- TV on air: `GET /tv/on_the_air`
-- Popular TV: `GET /tv/popular`
-- Top rated TV: `GET /tv/top_rated`
-- TV details: `GET /tv/{id}`
-- TV credits: `GET /tv/{id}/credits`
-- TV similar: `GET /tv/{id}/similar`
-- Genre list (movies): `GET /genre/movie/list`
-- Genre list (TV): `GET /genre/tv/list`
-- Search (multi): `GET /search/multi?query={q}`
+1. **Types** — add/extend interfaces in `src/types/tmdb.ts` if needed.
+2. **API** — add fetch function(s) to `src/util/API.ts` with JSDoc. Never duplicate existing functions.
+3. **Hook** — create a TanStack Query hook in `src/hooks/`:
+   - List pages → `useInfiniteQuery`
+   - Detail pages → `useQueries` (parallel fetches)
+   - Single resource → `useQuery`
+4. **Components** — create sub-components under `src/components/<Name>/` if reusable.
+5. **Page** — create `src/pages/<Name>/<Name>.tsx`.
+6. **Route** — register in `src/router.tsx` with `React.lazy`.
+7. **SEO** — add `<Helmet>` with title, description, and Open Graph tags.
 
-## Rules to Follow
+---
+
+## Infinite Scroll Pattern (list pages)
+
+All list pages use `useInfiniteQuery` with a "Load More" button. No numbered pagination.
+
+```tsx
+// src/hooks/useMovies.ts
+import { useInfiniteQuery } from '@tanstack/react-query'
+import { fetchPopularMovies } from '@/util/API'
+
+export function usePopularMovies() {
+  return useInfiniteQuery({
+    queryKey: ['movies', 'popular'],
+    queryFn: ({ pageParam }) => fetchPopularMovies(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (last) =>
+      last.page < Math.min(last.total_pages, 500) ? last.page + 1 : undefined,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  })
+}
+
+// In the page component:
+const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, error } = usePopularMovies()
+const movies = data?.pages.flatMap((p) => p.results) ?? []
+```
+
+The "Load More" button:
+```tsx
+{hasNextPage && (
+  <div className="mt-10 flex justify-center">
+    <Button
+      onClick={() => fetchNextPage()}
+      disabled={isFetchingNextPage}
+      variant="outline"
+      size="lg"
+    >
+      {isFetchingNextPage ? 'Loading…' : 'Load More'}
+    </Button>
+  </div>
+)}
+```
+
+---
+
+## Detail Page Pattern
+
+```tsx
+// src/hooks/useMovieDetails.ts
+import { useQueries } from '@tanstack/react-query'
+import { fetchMovieDetails, fetchMovieCredits, fetchMovieVideos, fetchSimilarMovies } from '@/util/API'
+
+export function useMovieDetails(id: number) {
+  return useQueries({
+    queries: [
+      { queryKey: ['movie', id, 'details'],  queryFn: () => fetchMovieDetails(id),  staleTime: 10 * 60 * 1000 },
+      { queryKey: ['movie', id, 'credits'],  queryFn: () => fetchMovieCredits(id),  staleTime: 10 * 60 * 1000 },
+      { queryKey: ['movie', id, 'videos'],   queryFn: () => fetchMovieVideos(id),   staleTime: 10 * 60 * 1000 },
+      { queryKey: ['movie', id, 'similar'],  queryFn: () => fetchSimilarMovies(id), staleTime: 10 * 60 * 1000 },
+    ],
+  })
+}
+```
+
+---
+
+## SEO Requirements
+
+Every page must include `<Helmet>`:
+
+```tsx
+import { Helmet } from 'react-helmet-async'
+
+// List page
+<Helmet>
+  <title>Popular Movies — CineVault</title>
+  <meta name="description" content="Browse popular movies on CineVault." />
+</Helmet>
+
+// Detail page
+<Helmet>
+  <title>{details.title} — CineVault</title>
+  <meta name="description" content={details.overview.slice(0, 155)} />
+  <meta property="og:title" content={`${details.title} — CineVault`} />
+  <meta property="og:description" content={details.overview.slice(0, 155)} />
+  <meta property="og:image" content={`${IMAGE_BASE}/w780${details.backdrop_path}`} />
+  <meta property="og:type" content="video.movie" />
+  <link rel="canonical" href={`https://cinevault.app/movies/${details.id}`} />
+</Helmet>
+```
+
+---
+
+## Performance Checklist
+
+- [ ] Hero/LCP image uses `loading="eager"` and `fetchpriority="high"`
+- [ ] All below-fold images use `loading="lazy"`
+- [ ] Image containers have explicit dimensions to prevent CLS
+- [ ] TMDB image size matches the rendered size (no `original` for small thumbnails)
+- [ ] `React.lazy` wraps the page in `router.tsx`
+
+---
+
+## Output Checklist
+
+Before finishing, confirm:
+- [ ] Types defined or reused from `src/types/tmdb.ts`
+- [ ] Fetch function(s) in `src/util/API.ts` with JSDoc
+- [ ] TanStack Query hook in `src/hooks/` (`useInfiniteQuery` for lists, `useQueries` for detail)
+- [ ] Page created at correct path with `<Helmet>` SEO tags
+- [ ] Route registered in `src/router.tsx` with `React.lazy`
+- [ ] Loading skeleton shown while data loads
+- [ ] Error state shown on failure
+- [ ] Empty state shown on 0 results
+- [ ] "Load More" button for infinite scroll on list pages
+- [ ] LCP image has `loading="eager"` + `fetchpriority="high"`
+- [ ] Lint passes (`pnpm lint`)
+
+---
+
+## Rules
 
 - TypeScript only — no `.js`/`.jsx`.
 - No `any` types — define interfaces for all API responses.
 - One component per file.
 - All API keys from env vars — never hardcoded.
-- Conventional commit messages when summarizing changes.
+- No `useState + useEffect` for async data — use TanStack Query.
+- No numbered pagination — use `useInfiniteQuery` with Load More.
+- Conventional commit message when summarizing changes.

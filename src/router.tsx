@@ -19,21 +19,23 @@ function PageLoader() {
   )
 }
 
+function S({ children }: { children: React.ReactNode }) {
+  return <Suspense fallback={<PageLoader />}>{children}</Suspense>
+}
+
 export function AppRouter() {
   return (
-    <Suspense fallback={<PageLoader />}>
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/movies" element={<MoviesPage />} />
-          <Route path="/movies/:id" element={<MovieDetailsPage />} />
-          <Route path="/actors" element={<ActorsPage />} />
-          <Route path="/actors/:id" element={<ActorDetailsPage />} />
-          <Route path="/tv" element={<TVPage />} />
-          <Route path="/tv/:id" element={<TVDetailsPage />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Route>
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/" element={<S><HomePage /></S>} />
+        <Route path="/movies" element={<S><MoviesPage /></S>} />
+        <Route path="/movies/:id" element={<S><MovieDetailsPage /></S>} />
+        <Route path="/actors" element={<S><ActorsPage /></S>} />
+        <Route path="/actors/:id" element={<S><ActorDetailsPage /></S>} />
+        <Route path="/tv" element={<S><TVPage /></S>} />
+        <Route path="/tv/:id" element={<S><TVDetailsPage /></S>} />
+        <Route path="*" element={<S><NotFoundPage /></S>} />
+      </Route>
+    </Routes>
   )
 }

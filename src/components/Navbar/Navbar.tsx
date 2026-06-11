@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Search, Sun, Moon, Menu, X, ChevronDown, Film, Tv, Users } from 'lucide-react'
 import { useTheme } from '@/context/ThemeContext'
-import { fetchMovieGenres, fetchTVGenres } from '@/util/API'
-import type { Genre } from '@/types/tmdb'
+import { useGenres } from '@/hooks/useGenres'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import type { Genre } from '@/types/tmdb'
 
 const MOVIE_CATEGORIES = [
   { label: 'Now Playing', value: 'now_playing' },
@@ -30,13 +30,17 @@ export function Navbar() {
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<DropdownKey>(null)
-  const [genres, setGenres] = useState<Genre[]>([])
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie')
 
   const navRef = useRef<HTMLElement>(null)
 
+  const genresEnabled = activeDropdown === 'genres'
+  const { data: genres, isLoading: genresLoading, isError: genresError } = useGenres(
+    genresEnabled ? mediaType : 'movie',
+    { enabled: genresEnabled }
+  )
 
-  // close dropdown when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (navRef.current && !navRef.current.contains(event.target as Node)) {
@@ -46,15 +50,6 @@ export function Navbar() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  // fetch genres when genre dropdown opens
-  useEffect(() => {
-    if (activeDropdown !== 'genres') return
-    const fetchFn = mediaType === 'movie' ? fetchMovieGenres : fetchTVGenres
-    fetchFn()
-      .then((data) => setGenres(data.genres))
-      .catch(() => setGenres([]))
-  }, [activeDropdown, mediaType])
 
   function toggleDropdown(key: DropdownKey) {
     setActiveDropdown((prev) => (prev === key ? null : key))
@@ -99,7 +94,7 @@ export function Navbar() {
         {/* Logo */}
         <Link
           to="/"
-          className="flex items-center gap-2 text-xl font-bold text-primary transition-opacity hover:opacity-80"
+          className="flex items-center gap-2 text-xl font-bold text-primary transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Film className="size-6" />
           CineVault
@@ -186,7 +181,7 @@ export function Navbar() {
                   <button
                     onClick={() => setMediaType('movie')}
                     className={cn(
-                      'rounded px-3 py-1 text-xs font-medium transition-colors',
+                      'rounded px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       mediaType === 'movie'
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground'
@@ -197,7 +192,7 @@ export function Navbar() {
                   <button
                     onClick={() => setMediaType('tv')}
                     className={cn(
-                      'rounded px-3 py-1 text-xs font-medium transition-colors',
+                      'rounded px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                       mediaType === 'tv'
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground'
@@ -207,7 +202,9 @@ export function Navbar() {
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-0.5 p-1">
-                  {genres.length === 0 ? (
+                  {genresError ? (
+                    <p className="col-span-2 py-4 text-center text-sm text-destructive">Failed to load genres.</p>
+                  ) : genresLoading || !genres ? (
                     <p className="col-span-2 py-4 text-center text-sm text-muted-foreground">Loading…</p>
                   ) : (
                     genres.map((genre) => (
@@ -232,7 +229,7 @@ export function Navbar() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search…"
-                className="h-8 w-48 rounded-lg border border-border bg-muted pl-8 pr-3 text-sm outline-none transition-all focus:w-64 focus:border-ring focus:ring-2 focus:ring-ring/30"
+                className="h-8 w-48 rounded-lg border border-border bg-muted pl-8 pr-3 text-sm outline-none transition-all focus:w-64 focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
               />
             </div>
           </form>
@@ -270,7 +267,7 @@ export function Navbar() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search movies, shows, actors…"
-                className="h-9 w-full rounded-lg border border-border bg-muted pl-8 pr-3 text-sm outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+                className="h-9 w-full rounded-lg border border-border bg-muted pl-8 pr-3 text-sm outline-none focus:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
               />
             </div>
           </form>
@@ -281,7 +278,7 @@ export function Navbar() {
               <button
                 key={cat.value}
                 onClick={() => handleMovieCategory(cat.value)}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {cat.label}
               </button>
@@ -292,7 +289,7 @@ export function Navbar() {
               <button
                 key={cat.value}
                 onClick={() => handleTVCategory(cat.value)}
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {cat.label}
               </button>
@@ -300,7 +297,8 @@ export function Navbar() {
 
             <Link
               to="/actors"
-              className="block rounded-lg px-3 py-2 text-sm hover:bg-muted"
+              className="block rounded-lg px-3 py-2 text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={closeAll}
             >
               Actors
             </Link>
@@ -317,7 +315,7 @@ function DropdownPanel({ children, className }: { children: React.ReactNode; cla
   return (
     <div
       className={cn(
-        'absolute left-0 top-full z-50 mt-1 min-w-[10rem] rounded-xl border border-border bg-popover shadow-lg animate-in fade-in-0 zoom-in-95',
+        'absolute left-0 top-full z-50 mt-1 min-w-40 rounded-xl border border-border bg-popover shadow-lg animate-in fade-in-0 zoom-in-95',
         className
       )}
     >
@@ -330,7 +328,7 @@ function DropdownItem({ children, onClick }: { children: React.ReactNode; onClic
   return (
     <button
       onClick={onClick}
-      className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted hover:text-foreground"
+      className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {children}
     </button>

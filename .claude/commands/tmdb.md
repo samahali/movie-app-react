@@ -1,6 +1,6 @@
 # /tmdb
 
-Look up a TMDB endpoint and generate a fully typed fetch function and response interface for it.
+Look up a TMDB endpoint and generate a fully typed fetch function, response interface, and TanStack Query hook.
 
 ## Usage
 
@@ -18,10 +18,11 @@ Examples:
 
 ## What This Does
 
-1. Identifies the correct TMDB v3 endpoint for the request.
+1. Identifies the correct TMDB v3 endpoint.
 2. Documents the full response shape as a TypeScript interface.
-3. Generates a ready-to-paste fetch function following the project's pattern.
-4. Notes any quirks (e.g. IMDB links require `/person/{id}/external_ids` not the base person endpoint).
+3. Generates a ready-to-paste fetch function following the project pattern.
+4. Generates a TanStack Query hook (`useInfiniteQuery` for lists, `useQuery`/`useQueries` for details).
+5. Notes quirks, required params, and pagination behavior.
 
 ## TMDB Quick Reference
 
@@ -63,10 +64,10 @@ Examples:
 ### Search
 | What | Endpoint |
 |---|---|
-| Multi (movies + TV + people) | `GET /search/multi?query={q}&page={n}` |
-| Movies only | `GET /search/movie?query={q}&page={n}` |
-| TV only | `GET /search/tv?query={q}&page={n}` |
-| People only | `GET /search/person?query={q}&page={n}` |
+| Multi | `GET /search/multi?query={q}&page={n}` |
+| Movies | `GET /search/movie?query={q}&page={n}` |
+| TV | `GET /search/tv?query={q}&page={n}` |
+| People | `GET /search/person?query={q}&page={n}` |
 
 ## Image URL Construction
 
@@ -74,16 +75,19 @@ Examples:
 ${import.meta.env.VITE_TMDB_IMAGE_BASE}/<size>/<file_path>
 ```
 
-Poster sizes: `w92` `w154` `w185` `w342` `w500` `w780` `original`
-Profile sizes: `w45` `w185` `h632` `original`
-Backdrop sizes: `w300` `w780` `w1280` `original`
-Logo sizes: `w45` `w92` `w154` `w185` `w300` `w500` `original`
+| Type | Sizes |
+|---|---|
+| Poster | `w92` `w154` `w185` `w342` `w500` `w780` `original` |
+| Profile | `w45` `w185` `h632` `original` |
+| Backdrop | `w300` `w780` `w1280` `original` |
+| Logo | `w45` `w92` `w154` `w185` `w300` `w500` `original` |
+
+**Size selection guideline:** use the smallest size that is still sharp at the rendered size. Cards at 200px wide → `w342`. Hero backdrop at 100vw → `original`. Never use `original` for small thumbnails.
 
 ## Output Format
 
-The command returns:
-
-1. The exact endpoint URL template.
-2. A TypeScript interface for the response.
-3. A ready-to-use fetch function matching the project's pattern in `src/util/API.ts`.
-4. Any important notes about the endpoint (pagination, required params, gotchas).
+1. Exact endpoint URL template
+2. TypeScript interface for the response (to add to `src/types/tmdb.ts`)
+3. Fetch function for `src/util/API.ts`
+4. TanStack Query hook for `src/hooks/`
+5. Notes: pagination behavior, required params, gotchas

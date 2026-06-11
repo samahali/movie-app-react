@@ -8,5 +8,18 @@ build/
 *.tmp/
 .env
 .env.local
+*.zip
+*.tar.gz
+.idea/
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+*.vscode/
+*.eslintcache
+*.prettiercache
+*.cache/
+coverage/
+*.nyc_output/
+*.tscache/
 
 
